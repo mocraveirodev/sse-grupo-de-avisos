@@ -1,0 +1,29 @@
+# Caddyfile do FrankenPHP.
+# Dois sites servindo o mesmo app:
+#   - HTTP  na porta 80  → para a plateia acessar pelo IP da sua máquina/servidor
+#   - HTTPS (HTTP/2 e HTTP/3) → sem o limite de 6 conexões SSE por domínio do HTTP/1.1
+{
+	# Sem redirecionar HTTP → HTTPS: no localhost a porta HTTPS do container é outra.
+	auto_https disable_redirects
+
+	frankenphp {
+		# Cada conexão SSE aberta ocupa uma thread PHP enquanto estiver conectada.
+		# É a mesma conta dos workers do PHP-FPM (Armadilha 6), só que bem mais barata.
+		num_threads {$NUM_THREADS:32}
+		max_threads {$MAX_THREADS:256}
+	}
+}
+
+(app) {
+	root * {$APP_ROOT:/app/public}
+	# Nada de "encode gzip" aqui: compressão segura a resposta e quebra o streaming.
+	php_server
+}
+
+http://:{$HTTP_LISTEN_PORT:80} {
+	import app
+}
+
+{$HTTPS_SITE:https://localhost} {
+	import app
+}

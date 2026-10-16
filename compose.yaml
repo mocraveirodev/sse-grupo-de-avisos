@@ -1,0 +1,49 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${HTTP_PORT:-8080}:80"          # HTTP: o endereço que a plateia abre
+      - "${HTTPS_PORT:-8443}:443"        # HTTPS com HTTP/2
+      - "${HTTPS_PORT:-8443}:443/udp"    # HTTP/3
+    environment:
+      REDIS_HOST: redis
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-phpeste}
+      ADMIN_NAME: ${ADMIN_NAME:-Admin}
+      HEARTBEAT_SECONDS: ${HEARTBEAT_SECONDS:-10}
+      STREAM_MAX_SECONDS: ${STREAM_MAX_SECONDS:-300}
+      NUM_THREADS: ${NUM_THREADS:-32}
+      MAX_THREADS: ${MAX_THREADS:-256}
+      HTTPS_SITE: ${HTTPS_SITE:-https://localhost}
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      # Código montado direto: editou, salvou, recarregou a página.
+      - ./public:/app/public
+      - ./src:/app/src
+      - ./bin:/app/bin
+      # Certificados e config do Caddy sobrevivem a um restart.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Conexões SSE não terminam sozinhas: num stop/restart, o Docker derruba o
+    # container em 3s e os navegadores reconectam com Last-Event-ID.
+    stop_grace_period: 3s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Grupo de Avisos · PHPeste</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="member">
+    <header>
+      <div>
+        <h1>📢 Grupo de Avisos</h1>
+        <small>Só a admin manda mensagem. Você só reage 😌</small>
+      </div>
+      <div style="text-align:right">
+        <div id="status" class="pill">conectando…</div>
+        <small id="online">&nbsp;</small>
+      </div>
+    </header>
+
+    <main>
+      <div id="feed" class="feed">
+        <p class="empty" id="vazio">Ainda não chegou nenhum aviso.<br>Já chegou? Ainda não. 🫏</p>
+      </div>
+    </main>
+
+    <footer>
+      <div class="reactions" id="reacoes"></div>
+      <div class="debug">Last-Event-ID: <span id="lastId">—</span></div>
+    </footer>
+  </div>
+
+  <script type="module" src="assets/member.js"></script>
+</body>
+</html>

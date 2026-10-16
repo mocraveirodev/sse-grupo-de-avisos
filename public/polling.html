@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Já chegou? · Polling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="admin">
+    <header>
+      <h1>🫏 Já chegou? (versão polling)</h1>
+      <div class="row">
+        <label class="label" for="intervalo" style="margin:0">Perguntar a cada</label>
+        <select id="intervalo" style="background:#0d1117;color:#fff;border:1px solid #2f2f2f;border-radius:8px;padding:.35rem">
+          <option value="1000">1 s</option>
+          <option value="2000" selected>2 s</option>
+          <option value="5000">5 s</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="stack">
+      <section class="card">
+        <div class="stats">
+          <div class="stat"><b id="req">0</b><small>requisições feitas</small></div>
+          <div class="stat"><b id="vazias">0</b><small>voltaram vazias</small></div>
+          <div class="stat"><b id="pct">0%</b><small>de desperdício</small></div>
+          <div class="stat"><b id="bytes">0 KB</b><small>baixados</small></div>
+        </div>
+        <p class="hint">Mesmo grupo, mesmos avisos. A diferença: aqui o navegador pergunta toda hora, mesmo quando não tem nada novo. Abra o DevTools → Network e compare com a <a href="./">versão SSE</a>, que usa uma conexão só.</p>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Avisos</h2>
+          <div id="feed" class="feed" style="margin-top:.75rem">
+            <p class="empty" id="vazio">Ainda não chegou nada…</p>
+          </div>
+        </section>
+        <section class="card">
+          <h2>“Já chegou?”</h2>
+          <div class="log" id="log" style="margin-top:.75rem"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="assets/polling.js"></script>
+</body>
+</html>

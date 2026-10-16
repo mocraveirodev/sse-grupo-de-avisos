@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Painel da Admin · Grupo de Avisos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <div class="admin">
+    <header>
+      <h1>📢 Painel da Admin</h1>
+      <div id="status" class="pill">conectando…</div>
+    </header>
+
+    <div class="grid">
+      <!-- Coluna 1: o que você usa no notebook -->
+      <div class="stack">
+        <section class="card">
+          <h2>Mandar aviso</h2>
+          <form id="form-aviso" style="margin-top:.75rem">
+            <label class="label" for="texto">Mensagem (até 280 caracteres)</label>
+            <textarea id="texto" rows="3" maxlength="280" placeholder="Galera, o café acabou ☕" required></textarea>
+            <div class="row" style="margin-top:.6rem">
+              <button class="primary" type="submit">Enviar pro grupo</button>
+              <small class="hint" style="margin:0">Ctrl/⌘ + Enter também envia</small>
+            </div>
+            <p id="msg-aviso" class="msg" role="status"></p>
+          </form>
+          <span class="label" style="margin-top:.5rem">Atalhos</span>
+          <div class="chips" id="atalhos"></div>
+        </section>
+
+        <section class="card">
+          <h2>Configuração</h2>
+          <label class="label" for="token" style="margin-top:.75rem">Token de admin (ADMIN_TOKEN do .env)</label>
+          <input id="token" type="password" autocomplete="off" placeholder="phpeste">
+          <label class="label" for="url" style="margin-top:.75rem">Endereço que a plateia vai abrir (vira o QR code)</label>
+          <input id="url" type="url" inputmode="url">
+          <p class="hint">Em <code>localhost</code> o celular não te encontra: troque pelo IP da sua máquina na rede (ex.: <code>http://192.168.0.10:8080/</code>) ou pelo domínio do seu servidor.</p>
+          <div class="row" style="margin-top:.75rem">
+            <button id="derrubar" type="button" title="Ato 3: todo mundo desconecta e volta em 10s com Last-Event-ID">🛗 Derrubar todo mundo por 10s</button>
+            <button class="danger" id="reset" type="button">Limpar grupo</button>
+            <a href="polling.html" target="_blank" rel="noopener">Abrir a versão com polling ↗</a>
+          </div>
+          <p id="msg-config" class="msg" role="status"></p>
+        </section>
+
+        <section class="card">
+          <h2>Já enviados</h2>
+          <div id="feed" class="feed" style="margin-top:.75rem">
+            <p class="empty" id="vazio">Nada por aqui ainda.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Coluna 2: o que você projeta no telão -->
+      <div class="stack">
+        <section class="card">
+          <div class="stage">
+            <div class="qr" id="qr" aria-label="QR code para entrar no grupo"></div>
+            <div class="stack" style="gap:.6rem">
+              <h2>Entra no grupo 👇</h2>
+              <div class="url" id="url-texto"></div>
+              <div><span class="big" id="online">0</span> <span class="hint">no grupo agora</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Reações ao vivo</h2>
+          <div class="scoreboard" id="placar" style="margin-top:.75rem"></div>
+          <p class="hint">Cada reação é um <code>POST /react.php</code> que volta para todo mundo pelo SSE.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/vendor/qrcode.js"></script>
+  <script type="module" src="assets/admin.js"></script>
+</body>
+</html>
