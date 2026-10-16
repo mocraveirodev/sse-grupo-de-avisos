@@ -420,6 +420,9 @@ Com HTTPS, os navegadores usam HTTP/2, que multiplexa várias conexões SSE numa
 
 ## Problemas comuns
 
+**O build falha em `RUN install-php-extensions ...` (erro do PECL)**
+A extensão do Redis é baixada do [PECL](https://pecl.php.net), que de vez em quando fica fora do ar ou com o índice incompleto. Espere uns minutos e rode `docker compose build --no-cache app` de novo. Se continuar, troque a versão: `docker compose build --build-arg PHPREDIS_VERSION=6.1.0 app` e depois `docker compose up -d`.
+
 **`port is already allocated` / `address already in use`**
 Outra coisa está usando a porta 8080 ou 8443. Troque no `.env` (`HTTP_PORT=8081`, por exemplo) e rode `docker compose up -d` de novo.
 
