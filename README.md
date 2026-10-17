@@ -20,6 +20,7 @@ Não usa framework, WebSocket nem build de front-end, e o JavaScript de reconex�
 - [Endereços](#endereços)
 - [Testando sem navegador (curl)](#testando-sem-navegador-curl)
 - [Abrindo no celular (mesma rede Wi-Fi)](#abrindo-no-celular-mesma-rede-wi-fi)
+- [Abrindo para qualquer celular, de qualquer rede (túnel)](#abrindo-para-qualquer-celular-de-qualquer-rede-túnel)
 - [Roteiro da demo em 3 atos](#roteiro-da-demo-em-3-atos)
 - [Como funciona](#como-funciona)
 - [As 7 armadilhas do SSE em PHP (e onde cada uma está no código)](#as-7-armadilhas-do-sse-em-php-e-onde-cada-uma-está-no-código)
@@ -169,7 +170,43 @@ Se o celular não abrir:
 - No **Windows**, libere a porta 8080 no firewall quando ele perguntar (ou em "Permitir um app pelo Firewall").
 - No **macOS**, se o firewall estiver ligado, permita conexões de entrada para o Docker.
 
-> Num evento de verdade, o Wi-Fi costuma bloquear conexões entre aparelhos. Para isso, veja [Colocando num servidor](#colocando-num-servidor-para-usar-num-evento).
+> Num evento de verdade, o Wi-Fi costuma bloquear conexões entre aparelhos. Para isso, use o [túnel](#abrindo-para-qualquer-celular-de-qualquer-rede-túnel) ou [coloque num servidor](#colocando-num-servidor-para-usar-num-evento).
+
+> **Dica:** para não ter que digitar o IP toda vez, coloque `PUBLIC_URL=http://SEU_IP:8080/` no `.env` e rode `docker compose up -d`. O painel já abre com esse endereço no QR code.
+
+---
+
+## Abrindo para qualquer celular, de qualquer rede (túnel)
+
+O jeito mais rápido de a plateia acessar a demo que está rodando **no seu notebook**, inclusive pelo 4G, é um túnel do Cloudflare. Ele não pede conta nem configuração e gera um endereço público `https://alguma-coisa.trycloudflare.com` que aponta para o seu app.
+
+O túnel já está no `compose.yaml`, mas desligado por padrão. Para ligar:
+
+```bash
+docker compose --profile tunnel up -d
+```
+
+Abra o painel (http://localhost:8080/admin.html). Em alguns segundos, o campo do QR code se preenche sozinho com o endereço do túnel e aparece "✅ via túnel do Cloudflare". Aí é só a plateia escanear.
+
+Se quiser ver o endereço no terminal:
+
+```bash
+docker compose logs tunnel | grep trycloudflare.com
+```
+
+Para desligar tudo (inclusive o túnel):
+
+```bash
+docker compose --profile tunnel down
+```
+
+Bom saber:
+
+- **O endereço muda** cada vez que o túnel sobe. O painel sempre pega o novo, mas o QR code de um slide estático ficaria desatualizado. Projete o painel.
+- Ele usa **HTTPS e HTTP/2**, então o limite de 6 conexões do HTTP/1.1 não atrapalha.
+- Túnel sem conta é para teste: **não tem garantia de disponibilidade** e o Cloudflare limita a **200 requisições simultâneas**. Cada pessoa no grupo ocupa uma (a conexão SSE fica aberta), então dá para umas 150 pessoas com folga. Para mais que isso, [use um servidor](#colocando-num-servidor-para-usar-num-evento).
+- O notebook continua sendo o servidor: ele precisa de **internet estável** durante a demo. O 4G do celular roteado costuma ser mais confiável que o Wi-Fi do evento.
+- No Ato 3, opção B, o `docker compose stop app` derruba só o app. O túnel continua no ar com o mesmo endereço.
 
 ---
 
@@ -189,7 +226,7 @@ Mande um aviso pelo painel e mostre o texto chegando. A mensagem é: *"é só HT
 
 ### Ato 2: A plateia entra no grupo (2–3 min)
 
-1. Projete o **painel da admin** (o QR code e o contador de online ficam grandes no lado direito).
+1. Projete o **painel da admin** (o QR code e o contador de online ficam grandes no lado direito). Se a plateia não estiver na mesma rede que você, suba antes o [túnel](#abrindo-para-qualquer-celular-de-qualquer-rede-túnel).
 2. Peça para a plateia escanear o QR code e acompanhe o contador subindo.
 3. Mande avisos pelos atalhos (ou escreva os seus) e vá pedindo reações. Os emojis sobem na tela de todo mundo.
 4. Destaque que **reagir é um `POST` comum, e o retorno chega pelo SSE**: SSE + POST dá conta de muita coisa para a qual se usaria WebSocket.
@@ -326,6 +363,7 @@ docker compose up -d   # recria o container com os valores novos
 | `NUM_THREADS` | `32` | Threads PHP com que o FrankenPHP começa |
 | `MAX_THREADS` | `256` | Máximo de threads PHP, ou seja, mais ou menos o máximo de pessoas conectadas ao mesmo tempo |
 | `HTTPS_SITE` | `https://localhost` | Endereço do site HTTPS. Num servidor, coloque o seu domínio |
+| `PUBLIC_URL` | (vazio) | Endereço que já vem no QR code do painel. Com o túnel ligado, não precisa |
 | `TZ` | `America/Sao_Paulo` | Fuso horário dos avisos |
 
 ---
@@ -340,6 +378,7 @@ docker compose up -d   # recria o container com os valores novos
 | `POST /derrubar.php` | Admin | `segundos` (3 a 60, padrão 10) + header `X-Admin-Token` | Todo mundo desconecta e volta depois de N segundos (Ato 3) |
 | `POST /reset.php` | Admin | header `X-Admin-Token` | `{"ok":true}`: apaga avisos e reações |
 | `GET /polling.php?depois=<id>` | Página de polling | — | `{"itens":[...],"ultimoId":"..."}` |
+| `GET /config.php` | Painel | — | `{"tunnelUrl":"https://...","publicUrl":null}`: o endereço para o QR code |
 | `GET /armadilha-buffer.php[?corrigido=1]` | Demo | — | 10 eventos, um por segundo |
 
 ---
@@ -348,7 +387,7 @@ docker compose up -d   # recria o container com os valores novos
 
 ```text
 .
-├── compose.yaml            # app (FrankenPHP) + redis
+├── compose.yaml            # app (FrankenPHP) + redis (+ túnel opcional)
 ├── Dockerfile              # imagem do FrankenPHP com a extensão do Redis
 ├── .env.example            # todas as configurações, comentadas
 ├── docker/
@@ -365,6 +404,7 @@ docker compose up -d   # recria o container com os valores novos
     ├── derrubar.php        # POST: "volta daqui a 10s" (admin, Ato 3)
     ├── reset.php           # POST: limpar o grupo (admin)
     ├── polling.php         # a versão "já chegou?" para comparar
+    ├── config.php          # descobre o endereço do túnel para o QR code
     ├── armadilha-buffer.php
     ├── index.html          # página da plateia
     ├── admin.html          # painel da admin (QR code, placar, online)
@@ -394,7 +434,7 @@ O servidor embutido do PHP atende uma requisição por worker, e **cada pessoa c
 
 ## Colocando num servidor (para usar num evento)
 
-Para a plateia acessar de qualquer rede (inclusive 4G), o app precisa estar na internet. Uma VPS pequena (1 vCPU, 1 GB de RAM) dá conta tranquilamente de uma sala de palestra.
+O [túnel](#abrindo-para-qualquer-celular-de-qualquer-rede-túnel) resolve para testar e para salas pequenas. Para não depender do notebook nem da internet do evento, coloque o app num servidor. Uma VPS pequena (1 vCPU, 1 GB de RAM) dá conta tranquilamente de uma sala de palestra.
 
 1. Aponte um domínio (ex.: `avisos.seudominio.com`) para o IP da VPS (registro DNS do tipo `A`).
 2. Na VPS, instale o Docker e clone o repositório.

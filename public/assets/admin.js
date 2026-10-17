@@ -25,8 +25,38 @@ tokenInput.addEventListener('change', () => gravarLocal('admin-token', tokenInpu
 urlInput.value = lerLocal('public-url', `${location.origin}/`);
 urlInput.addEventListener('input', () => {
   gravarLocal('public-url', urlInput.value);
+  $('#url-origem').textContent = '';
   desenharQr();
 });
+
+// Endereço automático: túnel do Cloudflare (se estiver rodando) ou PUBLIC_URL do .env.
+// Só substitui o campo se ele estiver com um endereço que o celular não alcança
+// (localhost) ou com um túnel antigo (o endereço muda a cada vez que o túnel sobe).
+const ENDERECO_LOCAL = /localhost|127\.0\.0\.1|trycloudflare\.com/;
+let tentativas = 0;
+async function descobrirEndereco() {
+  try {
+    const resposta = await fetch('config.php', { cache: 'no-store' });
+    const { tunnelUrl, publicUrl } = await resposta.json();
+    const automatico = tunnelUrl || publicUrl;
+    if (automatico) {
+      if (urlInput.value !== automatico && (!urlInput.value || ENDERECO_LOCAL.test(urlInput.value))) {
+        urlInput.value = automatico;
+        gravarLocal('public-url', automatico);
+        desenharQr();
+      }
+      if (urlInput.value === automatico) {
+        $('#url-origem').textContent = tunnelUrl ? '✅ via túnel do Cloudflare' : '✅ do PUBLIC_URL';
+      }
+      return;
+    }
+  } catch {
+    // sem config: segue com o que está no campo
+  }
+  // O túnel leva alguns segundos para ganhar um endereço: tenta de novo por ~1 minuto.
+  if (++tentativas < 12) setTimeout(descobrirEndereco, 5000);
+}
+descobrirEndereco();
 
 function desenharQr() {
   const url = urlInput.value.trim() || `${location.origin}/`;

@@ -14,6 +14,7 @@ services:
       NUM_THREADS: ${NUM_THREADS:-32}
       MAX_THREADS: ${MAX_THREADS:-256}
       HTTPS_SITE: ${HTTPS_SITE:-https://localhost}
+      PUBLIC_URL: ${PUBLIC_URL:-}
       TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       # Código montado direto: editou, salvou, recarregou a página.
@@ -29,6 +30,16 @@ services:
     # Conexões SSE não terminam sozinhas: num stop/restart, o Docker derruba o
     # container em 3s e os navegadores reconectam com Last-Event-ID.
     stop_grace_period: 3s
+    restart: unless-stopped
+
+  # Opcional: um endereço público https://*.trycloudflare.com apontando para o app,
+  # sem conta e sem configurar nada. Sobe com: docker compose --profile tunnel up -d
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: ["tunnel", "--metrics", "0.0.0.0:2000", "--url", "http://app:80"]
+    depends_on:
+      - app
     restart: unless-stopped
 
   redis:
