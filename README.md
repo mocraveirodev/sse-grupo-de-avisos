@@ -194,7 +194,7 @@ Se quiser ver o endereço no terminal:
 docker compose logs tunnel | grep trycloudflare.com
 ```
 
-Para desligar tudo (inclusive o túnel):
+Para desligar tudo (inclusive o túnel). O `--profile tunnel` é obrigatório aqui: sem ele o túnel continua rodando e o Docker avisa que a rede "ainda está em uso".
 
 ```bash
 docker compose --profile tunnel down
@@ -359,7 +359,7 @@ docker compose up -d   # recria o container com os valores novos
 | `ADMIN_TOKEN` | `phpeste` | Senha do painel e dos endpoints de admin. **Troque antes de usar num evento** |
 | `ADMIN_NAME` | `Admin` | Nome que aparece como autor dos avisos |
 | `HEARTBEAT_SECONDS` | `10` | Intervalo do `: ping` e da atualização de quantas pessoas estão online |
-| `STREAM_MAX_SECONDS` | `300` | Depois desse tempo o servidor fecha a conexão e o navegador reconecta (com `Last-Event-ID`) |
+| `STREAM_MAX_SECONDS` | `60` | Depois desse tempo o servidor fecha a conexão e o navegador reconecta (com `Last-Event-ID`) |
 | `NUM_THREADS` | `32` | Threads PHP com que o FrankenPHP começa |
 | `MAX_THREADS` | `256` | Máximo de threads PHP, ou seja, mais ou menos o máximo de pessoas conectadas ao mesmo tempo |
 | `HTTPS_SITE` | `https://localhost` | Endereço do site HTTPS. Num servidor, coloque o seu domínio |
@@ -486,6 +486,12 @@ O campo **Token de admin** precisa ser igual ao `ADMIN_TOKEN` (padrão: `phpeste
 
 **O contador de online demora a atualizar**
 Ele é atualizado a cada heartbeat (`HEARTBEAT_SECONDS`, 10s por padrão), e quem fechou a aba some da contagem em até 30s.
+
+**`docker compose down` avisa "Network ... Resource is still in use"**
+O túnel continua rodando. Ele está num *profile*, e o `down` sem profile não o derruba. Use `docker compose --profile tunnel down` (com `-v` se quiser apagar os dados também).
+
+**Pelo túnel a página diz "conectado", mas os avisos não chegam**
+Algo no caminho está comprimindo e segurando a resposta. O `stream.php` já manda `Content-Encoding: none` e um comentário de 2 KB no início para evitar isso. Para conferir, rode `curl -N https://SEU-TUNEL.trycloudflare.com/stream.php`: os eventos devem aparecer um a um.
 
 **Mudei o `Dockerfile`, o `Caddyfile` ou o `php.ini` e nada mudou**
 Esses arquivos entram na imagem. Rode `docker compose up -d --build`.

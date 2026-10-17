@@ -23,6 +23,10 @@ header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-transform');
 // [Armadilha 2] nginx (e outros proxies) bufferizam a resposta por padrão.
 header('X-Accel-Buffering: no');
+// [Armadilha 2] CDNs como o Cloudflare (inclusive o túnel) comprimem a resposta quando
+// o navegador aceita gzip/brotli, e a compressão segura os eventos. Avisando que a
+// resposta "já está codificada", ninguém no caminho tenta comprimir.
+header('Content-Encoding: none');
 
 // [Armadilha 1] Output buffering: esvazia e desliga qualquer buffer do PHP.
 // (o php.ini do container também tem output_buffering = 0)
@@ -49,10 +53,14 @@ function send_event(?string $id, string $event, string $data): void
 $redis = redis();
 
 $heartbeatSeconds = max(1, (int) env('HEARTBEAT_SECONDS', '10'));
-$maxSeconds = max(10, (int) env('STREAM_MAX_SECONDS', '300'));
+$maxSeconds = max(10, (int) env('STREAM_MAX_SECONDS', '60'));
 $clientId = bin2hex(random_bytes(8));
 // O painel da admin também escuta o stream, mas não conta como "pessoa no grupo".
 $contaComoPresenca = ($_GET['papel'] ?? '') !== 'admin';
+
+// [Armadilha 2] Alguns proxies só repassam a resposta depois dos primeiros KB.
+// Um comentário de 2 KB logo no início "empurra" a conexão para o modo streaming.
+echo ':' . str_repeat(' ', 2048) . "\n\n";
 
 // Se a conexão cair, o navegador reconecta sozinho depois de 2s.
 echo "retry: 2000\n\n";
