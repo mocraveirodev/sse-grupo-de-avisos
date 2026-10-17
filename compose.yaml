@@ -32,16 +32,6 @@ services:
     stop_grace_period: 3s
     restart: unless-stopped
 
-  # Opcional: um endereço público https://*.trycloudflare.com apontando para o app,
-  # sem conta e sem configurar nada. Sobe com: docker compose --profile tunnel up -d
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    profiles: ["tunnel"]
-    command: ["tunnel", "--metrics", "0.0.0.0:2000", "--url", "http://app:80"]
-    depends_on:
-      - app
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]

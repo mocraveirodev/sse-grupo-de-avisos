@@ -22,38 +22,36 @@ const ATALHOS = [
 tokenInput.value = lerLocal('admin-token');
 tokenInput.addEventListener('change', () => gravarLocal('admin-token', tokenInput.value));
 
-urlInput.value = lerLocal('public-url', `${location.origin}/`);
+const salvo = lerLocal('public-url');
+const LOCAL = /localhost|127\.0\.0\.1/;
+// Descarta o que não serve mais: túnel antigo, ou localhost quando o painel
+// já está aberto num endereço público (ex.: Render), que vira o padrão.
+const salvoInvalido = !salvo || /trycloudflare\.com/.test(salvo) || (LOCAL.test(salvo) && !LOCAL.test(location.hostname));
+urlInput.value = salvoInvalido ? `${location.origin}/` : salvo;
 urlInput.addEventListener('input', () => {
   gravarLocal('public-url', urlInput.value);
   $('#url-origem').textContent = '';
   desenharQr();
 });
 
-// Endereço automático: túnel do Cloudflare (se estiver rodando) ou PUBLIC_URL do .env.
-// Só substitui o campo se ele estiver com um endereço que o celular não alcança
-// (localhost) ou com um túnel antigo (o endereço muda a cada vez que o túnel sobe).
-// Confere a cada 5s: o túnel pode subir (ou mudar de endereço) com o painel já aberto.
-const ENDERECO_LOCAL = /localhost|127\.0\.0\.1|trycloudflare\.com/;
+// PUBLIC_URL do .env: se o campo ainda estiver com um endereço que o celular
+// não alcança (localhost), troca por ele.
 async function descobrirEndereco() {
   try {
     const resposta = await fetch('config.php', { cache: 'no-store' });
-    const { tunnelUrl, publicUrl } = await resposta.json();
-    const automatico = tunnelUrl || publicUrl;
-    if (!automatico) return;
-    if (urlInput.value !== automatico && (!urlInput.value || ENDERECO_LOCAL.test(urlInput.value))) {
-      urlInput.value = automatico;
-      gravarLocal('public-url', automatico);
+    const { publicUrl } = await resposta.json();
+    if (!publicUrl) return;
+    if (urlInput.value !== publicUrl && (!urlInput.value || LOCAL.test(urlInput.value))) {
+      urlInput.value = publicUrl;
+      gravarLocal('public-url', publicUrl);
       desenharQr();
     }
-    if (urlInput.value === automatico) {
-      $('#url-origem').textContent = tunnelUrl ? '✅ via túnel do Cloudflare' : '✅ do PUBLIC_URL';
-    }
+    if (urlInput.value === publicUrl) $('#url-origem').textContent = '✅ do PUBLIC_URL';
   } catch {
     // sem config: segue com o que está no campo
   }
 }
 descobrirEndereco();
-setInterval(descobrirEndereco, 5000);
 
 function desenharQr() {
   const url = urlInput.value.trim() || `${location.origin}/`;

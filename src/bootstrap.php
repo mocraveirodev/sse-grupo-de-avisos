@@ -29,7 +29,21 @@ function env(string $key, string $default = ''): string
 function redis(): Redis
 {
     $redis = new Redis();
-    $redis->connect(env('REDIS_HOST', '127.0.0.1'), (int) env('REDIS_PORT', '6379'), 2.0);
+
+    // REDIS_URL (ex.: redis://usuario:senha@host:6379, como o Render entrega)
+    // tem prioridade sobre REDIS_HOST/REDIS_PORT.
+    $url = env('REDIS_URL');
+    if ($url !== '') {
+        $parts = parse_url($url) ?: [];
+        $host = ($parts['scheme'] ?? 'redis') === 'rediss' ? 'tls://' . ($parts['host'] ?? '') : ($parts['host'] ?? '');
+        $redis->connect($host, (int) ($parts['port'] ?? 6379), 2.0);
+        if (isset($parts['pass'])) {
+            $redis->auth(isset($parts['user']) ? [urldecode($parts['user']), urldecode($parts['pass'])] : urldecode($parts['pass']));
+        }
+    } else {
+        $redis->connect(env('REDIS_HOST', '127.0.0.1'), (int) env('REDIS_PORT', '6379'), 2.0);
+    }
+
     // O XREAD BLOCK espera alguns segundos; o timeout de leitura precisa ser maior que isso.
     $redis->setOption(Redis::OPT_READ_TIMEOUT, 30);
 

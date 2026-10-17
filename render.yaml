@@ -1,0 +1,35 @@
+# Blueprint do Render: sobe o app (FrankenPHP) e o Redis (Key Value) no plano gratuito.
+# No Render: New → Blueprint → escolha este repositório. Ele pede o ADMIN_TOKEN e o ADMIN_NAME.
+services:
+  - type: web
+    name: sse-grupo-de-avisos
+    runtime: docker
+    plan: free
+    region: virginia            # a região do Render mais perto do Brasil
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /config.php
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: sse-grupo-de-avisos-redis
+          property: connectionString
+      - key: ADMIN_TOKEN        # senha do painel: o Render pergunta na criação
+        sync: false
+      - key: ADMIN_NAME         # nome que aparece nos avisos
+        sync: false
+      # O Render manda o tráfego para a porta 10000 e já cuida do HTTPS.
+      - key: HTTP_LISTEN_PORT
+        value: "10000"
+      # O segundo site do Caddyfile (HTTPS local) não é usado aqui: vira uma porta interna parada.
+      - key: HTTPS_SITE
+        value: "http://:10001"
+      - key: TZ
+        value: America/Sao_Paulo
+
+  - type: keyvalue
+    name: sse-grupo-de-avisos-redis
+    plan: free
+    region: virginia
+    ipAllowList: []             # só o app (rede interna do Render) acessa
+    maxmemoryPolicy: noeviction

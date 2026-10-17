@@ -23,10 +23,6 @@ header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache, no-transform');
 // [Armadilha 2] nginx (e outros proxies) bufferizam a resposta por padrão.
 header('X-Accel-Buffering: no');
-// [Armadilha 2] CDNs como o Cloudflare (inclusive o túnel) comprimem a resposta quando
-// o navegador aceita gzip/brotli, e a compressão segura os eventos. Avisando que a
-// resposta "já está codificada", ninguém no caminho tenta comprimir.
-header('Content-Encoding: none');
 
 // [Armadilha 1] Output buffering: esvazia e desliga qualquer buffer do PHP.
 // (o php.ini do container também tem output_buffering = 0)
