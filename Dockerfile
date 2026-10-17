@@ -22,6 +22,9 @@ COPY docker/php.ini $PHP_INI_DIR/conf.d/zz-sse.ini
 COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 
 WORKDIR /app
+# A imagem vem com um /app/public/index.php de boas-vindas ("it works!"), e o
+# php_server prefere index.php a index.html. Apaga antes de copiar o nosso.
+RUN rm -rf /app/public
 COPY src ./src
 COPY public ./public
 COPY bin ./bin
