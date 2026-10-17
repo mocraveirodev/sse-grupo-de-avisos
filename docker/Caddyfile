@@ -16,6 +16,9 @@
 
 (app) {
 	root * {$APP_ROOT:/app/public}
+	# Sem cache "esperto" do navegador: depois de um git pull, o JS novo vale na hora.
+	header /assets/* Cache-Control "no-cache"
+	header *.html Cache-Control "no-cache"
 	# Nada de "encode gzip" aqui: compressão segura a resposta e quebra o streaming.
 	php_server
 }

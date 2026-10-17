@@ -51,6 +51,8 @@ $redis = redis();
 $heartbeatSeconds = max(1, (int) env('HEARTBEAT_SECONDS', '10'));
 $maxSeconds = max(10, (int) env('STREAM_MAX_SECONDS', '300'));
 $clientId = bin2hex(random_bytes(8));
+// O painel da admin também escuta o stream, mas não conta como "pessoa no grupo".
+$contaComoPresenca = ($_GET['papel'] ?? '') !== 'admin';
 
 // Se a conexão cair, o navegador reconecta sozinho depois de 2s.
 echo "retry: 2000\n\n";
@@ -107,7 +109,9 @@ try {
             flush();
 
             $now = time();
-            $redis->zAdd(PRESENCE_KEY, $now, $clientId);
+            if ($contaComoPresenca) {
+                $redis->zAdd(PRESENCE_KEY, $now, $clientId);
+            }
             $redis->zRemRangeByScore(PRESENCE_KEY, '-inf', (string) ($now - 3 * $heartbeatSeconds));
             send_event(null, 'presenca', json_encode(['online' => $redis->zCard(PRESENCE_KEY)]));
             $lastBeat = $now;
