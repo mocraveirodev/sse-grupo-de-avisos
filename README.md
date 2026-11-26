@@ -11,6 +11,8 @@ Demo da palestra **"Server Sent Events (SSE): Seu PHP já faz tempo real, você 
 
 Não usa framework, WebSocket nem build de front-end, e o JavaScript de reconexão é zero.
 
+**Demo no ar:** [sse.mocraveirodev.com](https://sse.mocraveirodev.com). Entre no grupo e veja os avisos chegando (só a admin manda mensagem 😌).
+
 ---
 
 ## Sumário
@@ -29,6 +31,7 @@ Não usa framework, WebSocket nem build de front-end, e o JavaScript de reconex�
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Rodando sem Docker](#rodando-sem-docker)
 - [Colocando num servidor (para usar num evento)](#colocando-num-servidor-para-usar-num-evento)
+  - [VPS que já tem um nginx (ou outros sites)](#vps-que-já-tem-um-nginx-ou-outros-sites)
 - [Problemas comuns](#problemas-comuns)
 - [Licença](#licença)
 
@@ -215,7 +218,7 @@ Mande um aviso pelo painel e mostre o texto chegando. A mensagem é: *"é só HT
 
 ### Ato 2: A plateia entra no grupo (2–3 min)
 
-1. Projete o **painel da admin** (o QR code e o contador de online ficam grandes no lado direito). Se a plateia não estiver na mesma rede que você, use a versão [publicada no Render](#publicando-no-render-de-graça-para-a-plateia-acessar-de-qualquer-rede).
+1. Projete o **painel da admin** (o QR code e o contador de online ficam grandes no lado direito). Se a plateia não estiver na mesma rede que você, use a versão publicada [no Render](#publicando-no-render-de-graça-para-a-plateia-acessar-de-qualquer-rede) ou [numa VPS](#colocando-num-servidor-para-usar-num-evento).
 2. Peça para a plateia escanear o QR code e acompanhe o contador subindo.
 3. Mande avisos pelos atalhos (ou escreva os seus) e vá pedindo reações. Os emojis sobem na tela de todo mundo.
 4. Destaque que **reagir é um `POST` comum, e o retorno chega pelo SSE**: SSE + POST dá conta de muita coisa para a qual se usaria WebSocket.
@@ -441,11 +444,81 @@ Se preferir um servidor seu em vez do [Render](#publicando-no-render-de-graça-p
 
 4. Suba: `docker compose up -d --build`
 5. O Caddy (dentro do FrankenPHP) emite o certificado HTTPS automaticamente. As portas 80 e 443 precisam estar abertas no firewall da VPS.
-6. No painel (`https://avisos.seudominio.com/admin.html`), coloque `https://avisos.seudominio.com/` no campo do QR code.
+6. Abra `https://avisos.seudominio.com/admin.html`. Como o painel já está no endereço público, o QR code sai certo sozinho.
 
 Com HTTPS, os navegadores usam HTTP/2, que multiplexa várias conexões SSE numa só e acaba com o limite de 6 por domínio.
 
-> **Atrás de um nginx ou outro proxy?** Desligue o buffer para o `/stream.php` (`proxy_buffering off;` e `proxy_read_timeout 1h;` no nginx) e não ative compressão para `text/event-stream`. CDNs também podem segurar a resposta (o túnel gratuito do Cloudflare, por exemplo, não suporta SSE): teste antes do evento.
+### VPS que já tem um nginx (ou outros sites)
+
+Se as portas 80 e 443 já estão ocupadas (um nginx servindo outros sites, por exemplo), a demo sobe só para dentro da VPS e o nginx encaminha um subdomínio para ela. É assim que ela roda em produção, em `sse.mocraveirodev.com`, numa VPS AlmaLinux com nginx e certbot.
+
+1. Crie o registro DNS `A` do subdomínio (ex.: `sse.seudominio.com`) apontando para o IP da VPS.
+2. Clone o repositório e crie o `.env` publicando as portas **só no `127.0.0.1`**:
+
+   ```dotenv
+   HTTP_PORT=127.0.0.1:8080
+   HTTPS_PORT=127.0.0.1:8443
+   ADMIN_TOKEN=uma-senha-forte-de-verdade
+   ```
+
+   Use só letras, números e hífen no token: `$`, `#`, aspas e espaços são interpretados pelo Docker Compose.
+
+3. Suba e confira por dentro da VPS:
+
+   ```bash
+   docker compose up -d --build
+   curl -I http://127.0.0.1:8080/   # precisa responder 200 OK
+   ```
+
+4. **Só em distros com SELinux (AlmaLinux, Rocky, RHEL, Fedora):** libere o nginx para falar com o container. Sem isso, o nginx responde `502 Bad Gateway`.
+
+   ```bash
+   setsebool -P httpd_can_network_connect 1
+   ```
+
+5. Crie o site no nginx (`/etc/nginx/conf.d/sse.seudominio.com.conf`, ou em `sites-available` + `sites-enabled` no Debian/Ubuntu):
+
+   ```nginx
+   server {
+       listen 80;
+       listen [::]:80;
+       server_name sse.seudominio.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Connection "";
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+
+           # Armadilha 2: sem buffer, o SSE passa na hora
+           proxy_buffering off;
+           proxy_cache off;
+           gzip off;
+           proxy_read_timeout 1h;
+       }
+   }
+   ```
+
+   ```bash
+   nginx -t && systemctl reload nginx
+   ```
+
+   O `nginx -t` valida tudo antes de recarregar: se tiver erro, nada muda e os outros sites seguem no ar.
+
+6. Ative o HTTPS com o certbot (ele edita o arquivo acima e renova o certificado sozinho):
+
+   ```bash
+   certbot --nginx -d sse.seudominio.com
+   ```
+
+7. Teste: abra `https://sse.seudominio.com/admin.html` e rode `curl -N https://sse.seudominio.com/stream.php`. Os eventos precisam aparecer um a um, na hora em que você manda um aviso. Se chegarem em lote, falta o `proxy_buffering off`.
+
+Para atualizar depois: `git pull && docker compose up -d --build`. O `restart: unless-stopped` do compose faz a demo voltar sozinha se a VPS reiniciar.
+
+> **Outro proxy ou CDN na frente?** A regra é a mesma: desligue o buffer e a compressão para `text/event-stream`. CDNs também podem segurar a resposta (o túnel gratuito do Cloudflare, por exemplo, não suporta SSE): teste antes do evento.
 
 ---
 
@@ -479,7 +552,7 @@ O campo **Token de admin** precisa ser igual ao `ADMIN_TOKEN` (padrão: `phpeste
 Ele é atualizado a cada heartbeat (`HEARTBEAT_SECONDS`, 10s por padrão), e quem fechou a aba some da contagem em até 30s.
 
 **Os avisos chegam atrasados ou em lotes**
-Algo entre o servidor e o navegador está segurando a resposta: um proxy, uma CDN, um antivírus ou uma VPN corporativa. Para conferir, rode `curl -N SEU-ENDERECO/stream.php`: os eventos devem aparecer um a um, na hora. O túnel gratuito do Cloudflare (`trycloudflare.com`) faz exatamente isso, porque não suporta SSE. Use a rede local ou o Render.
+Algo entre o servidor e o navegador está segurando a resposta: um proxy, uma CDN, um antivírus ou uma VPN corporativa. Para conferir, rode `curl -N SEU-ENDERECO/stream.php`: os eventos devem aparecer um a um, na hora. O túnel gratuito do Cloudflare (`trycloudflare.com`) faz exatamente isso, porque não suporta SSE. Use a rede local, o Render ou uma VPS.
 
 **Mudei o `Dockerfile`, o `Caddyfile` ou o `php.ini` e nada mudou**
 Esses arquivos entram na imagem. Rode `docker compose up -d --build`.
